@@ -9,13 +9,13 @@ Starts:
 
 Usage::
 
-    ros2 launch mujoco_panda panda_sim.launch.py
+    ros2 launch mujoco_learn panda_sim.launch.py
 
     # Without viewer (headless, for MoveIt / RViz only):
-    ros2 launch mujoco_panda panda_sim.launch.py use_viewer:=false
+    ros2 launch mujoco_learn panda_sim.launch.py use_viewer:=false
 
     # With a specific menagerie path:
-    ros2 launch mujoco_panda panda_sim.launch.py menagerie_path:=/opt/mujoco_menagerie
+    ros2 launch mujoco_learn panda_sim.launch.py menagerie_path:=/opt/mujoco_menagerie
 '''
 
 import os
@@ -39,7 +39,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     # ── package paths ──────────────────────────────────────────────────
-    pkg_share = get_package_share_directory('mujoco_panda')
+    pkg_share = get_package_share_directory('mujoco_learn')
 
     # ── launch arguments ───────────────────────────────────────────────
     model_path_arg = DeclareLaunchArgument(
@@ -68,15 +68,15 @@ def generate_launch_description():
     )
 
     # ── environment ────────────────────────────────────────────────────
-    # Help mujoco_panda nodes find bundled resources
+    # Help mujoco_learn nodes find bundled resources
     set_share_env = SetEnvironmentVariable(
-        name='MUJOCO_PANDA_SHARE',
+        name='mujoco_learn_SHARE',
         value=pkg_share,
     )
 
     # ── simulation node ────────────────────────────────────────────────
     panda_sim_node = Node(
-        package='mujoco_panda',
+        package='mujoco_learn',
         executable='panda_sim_node',
         name='panda_sim_node',
         output='screen',

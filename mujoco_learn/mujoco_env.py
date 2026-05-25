@@ -1,10 +1,10 @@
 ﻿#!/usr/bin/env python3
-\"\"\"
+"""
 MuJoCo environment wrapper for Franka Emika Panda robot.
 
 Loads the Panda model from mujoco_menagerie and provides a clean
 interface for simulation stepping, state reading, and rendering.
-\"\"\"
+"""
 
 import os
 import sys
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def _find_menagerie_path() -> Optional[Path]:
-    \"\"\"Locate the mujoco_menagerie assets directory.\"\"\"
+    """Locate the mujoco_menagerie assets directory."""
     # 1. MMC_ASSETS environment variable (common convention)
     env_path = os.environ.get('MMC_ASSETS', '')
     if env_path:
@@ -56,14 +56,14 @@ def _find_menagerie_path() -> Optional[Path]:
 
 def _resolve_panda_xml(menagerie_path: Optional[Path] = None,
                        local_models: Optional[Path] = None) -> str:
-    \"\"\"
+    """
     Resolve the absolute path to the Panda scene XML.
 
     Priority:
       1. Explicit menagerie_path argument
       2. Local models/ directory (bundled copy)
       3. Auto-detected mujoco_menagerie install
-    \"\"\"
+    """
     if menagerie_path is None:
         menagerie_path = _find_menagerie_path()
 
@@ -119,7 +119,7 @@ PANDA_ALL_JOINTS = PANDA_ARM_JOINTS + PANDA_GRIPPER_JOINTS
 # ---------------------------------------------------------------------------
 
 class MujocoPandaEnv:
-    \"\"\"
+    """
     A self-contained MuJoCo simulation environment for the Franka Emika Panda.
 
     Usage::
@@ -129,7 +129,7 @@ class MujocoPandaEnv:
         for _ in range(1000):
             env.step()
             joints = env.get_joint_positions()
-    \"\"\"
+    """
 
     def __init__(self,
                  model_path: Optional[str] = None,
@@ -138,7 +138,7 @@ class MujocoPandaEnv:
                  render_mode: str = 'window',
                  timestep: float = 0.002,
                  headless: bool = False):
-        \"\"\"
+        """
         Parameters
         ----------
         model_path : str, optional
@@ -153,7 +153,7 @@ class MujocoPandaEnv:
             Simulation timestep in seconds.
         headless : bool
             If True, skip all rendering (useful for headless servers).
-        \"\"\"
+        """
         self._timestep = timestep
         self._render_mode = render_mode
         self._headless = headless
@@ -193,7 +193,7 @@ class MujocoPandaEnv:
     # ---- index maps -------------------------------------------------------
 
     def _build_index_maps(self):
-        \"\"\"Map joint/actuator names to MuJoCo IDs.\"\"\"
+        """Map joint/actuator names to MuJoCo IDs."""
         self.joint_name_to_id: Dict[str, int] = {}
         for i in range(self._model.njnt):
             name = mujoco.mj_id2name(self._model, mujoco.mjtObj.mjOBJ_JOINT, i)
@@ -245,7 +245,7 @@ class MujocoPandaEnv:
     # ---- simulation loop -------------------------------------------------
 
     def step(self, ctrl: Optional[np.ndarray] = None) -> None:
-        \"\"\"
+        """
         Advance the simulation by one timestep.
 
         Parameters
@@ -253,7 +253,7 @@ class MujocoPandaEnv:
         ctrl : np.ndarray, optional
             Actuator control signals. Shape `(nu,)`.
             If None, zero-control is applied (robot holds position).
-        \"\"\"
+        """
         if ctrl is not None:
             self._data.ctrl[:] = ctrl
         else:
@@ -263,12 +263,12 @@ class MujocoPandaEnv:
         self._step_count += 1
 
     def step_n(self, n: int, ctrl: Optional[np.ndarray] = None) -> None:
-        \"\"\"Step `n` times with the same control.\"\"\"
+        """Step `n` times with the same control."""
         for _ in range(n):
             self.step(ctrl)
 
     def reset(self) -> None:
-        \"\"\"Reset the simulation to initial state.\"\"\"
+        """Reset the simulation to initial state."""
         mujoco.mj_resetData(self._model, self._data)
         self._step_count = 0
         self._start_time = time.time()
@@ -276,22 +276,22 @@ class MujocoPandaEnv:
     # ---- state access -----------------------------------------------------
 
     def get_qpos(self) -> np.ndarray:
-        \"\"\"Return joint positions (qpos).\"\"\"
+        """Return joint positions (qpos)."""
         return self._data.qpos.copy()
 
     def get_qvel(self) -> np.ndarray:
-        \"\"\"Return joint velocities (qvel).\"\"\"
+        """Return joint velocities (qvel)."""
         return self._data.qvel.copy()
 
     def get_joint_positions(self, joint_names: Optional[list] = None) -> Dict[str, float]:
-        \"\"\"
+        """
         Return a dict mapping joint name -> position (radians).
 
         Parameters
         ----------
         joint_names : list, optional
             Specific joint names. Defaults to all joints.
-        \"\"\"
+        """
         names = joint_names or list(self.joint_name_to_id.keys())
         result = {}
         for name in names:
@@ -302,7 +302,7 @@ class MujocoPandaEnv:
         return result
 
     def get_joint_velocities(self, joint_names: Optional[list] = None) -> Dict[str, float]:
-        \"\"\"Return a dict mapping joint name -> velocity (rad/s).\"\"\"
+        """Return a dict mapping joint name -> velocity (rad/s)."""
         names = joint_names or list(self.joint_name_to_id.keys())
         result = {}
         for name in names:
@@ -313,12 +313,12 @@ class MujocoPandaEnv:
         return result
 
     def get_body_pose(self, body_name: str) -> Tuple[np.ndarray, np.ndarray]:
-        \"\"\"
+        """
         Return (position, quaternion) of a body in world frame.
 
         position : np.ndarray (3,)  – x, y, z
         quaternion : np.ndarray (4,) – w, x, y, z
-        \"\"\"
+        """
         bid = mujoco.mj_name2id(self._model, mujoco.mjtObj.mjOBJ_BODY, body_name)
         if bid < 0:
             raise ValueError(f'Body ""{body_name}"" not found in model.')
@@ -327,9 +327,9 @@ class MujocoPandaEnv:
         return pos, quat
 
     def get_site_pose(self, site_name: str) -> Tuple[np.ndarray, np.ndarray]:
-        \"\"\"
+        """
         Return (position, rotation_matrix) of a site in world frame.
-        \"\"\"
+        """
         sid = mujoco.mj_name2id(self._model, mujoco.mjtObj.mjOBJ_SITE, site_name)
         if sid < 0:
             raise ValueError(f'Site ""{site_name}"" not found in model.')
@@ -340,21 +340,21 @@ class MujocoPandaEnv:
     # ---- control ----------------------------------------------------------
 
     def set_control(self, ctrl: np.ndarray) -> None:
-        \"\"\"Write control signals to the data buffer (applied on next step).\"\"\"
+        """Write control signals to the data buffer (applied on next step)."""
         self._data.ctrl[:] = ctrl
 
     def get_actuator_force(self) -> np.ndarray:
-        \"\"\"Return actuator forces.\"\"\"
+        """Return actuator forces."""
         return self._data.actuator_force.copy()
 
     # ---- rendering --------------------------------------------------------
 
     def launch_viewer(self) -> Optional[viewer.Handle]:
-        \"\"\"
+        """
         Launch the interactive MuJoCo passive viewer.
 
         Returns the viewer handle, or None if headless / already open.
-        \"\"\"
+        """
         if self._headless:
             return None
         if self._viewer is not None:
@@ -372,11 +372,11 @@ class MujocoPandaEnv:
             return None
 
     def sync_viewer(self) -> bool:
-        \"\"\"
+        """
         Sync the viewer with current simulation state.
 
         Returns True if the viewer is still open.
-        \"\"\"
+        """
         if self._viewer is None:
             return True
         if not self._viewer.is_running():
@@ -385,7 +385,7 @@ class MujocoPandaEnv:
         return True
 
     def close_viewer(self) -> None:
-        \"\"\"Close the viewer.\"\"\"
+        """Close the viewer."""
         if self._viewer is not None:
             self._viewer.close()
             self._viewer = None
@@ -393,11 +393,11 @@ class MujocoPandaEnv:
 
     def render_offscreen(self, width: int = 640, height: int = 480,
                          camera: int = -1) -> np.ndarray:
-        \"\"\"
+        """
         Render a single frame offscreen (useful for headless / logging).
 
         Returns an RGB numpy array of shape `(height, width, 3)`.
-        \"\"\"
+        """
         if self._renderer is None:
             self._renderer = mujoco.Renderer(self._model, width, height)
 
@@ -407,14 +407,14 @@ class MujocoPandaEnv:
     # ---- convenience ------------------------------------------------------
 
     def close(self) -> None:
-        \"\"\"Clean up all resources.\"\"\"
+        """Clean up all resources."""
         self.close_viewer()
         if self._renderer is not None:
             self._renderer.close()
             self._renderer = None
 
     def is_viewer_running(self) -> bool:
-        \"\"\"Check whether the interactive viewer is still open.\"\"\"
+        """Check whether the interactive viewer is still open."""
         if self._viewer is None:
             return False
         return self._viewer.is_running()

@@ -1,6 +1,6 @@
 ﻿from setuptools import find_packages, setup
 
-package_name = 'mujoco_panda'
+package_name = 'mujoco_learn'
 
 setup(
     name=package_name,
@@ -22,7 +22,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'panda_sim_node = mujoco_panda.panda_sim_node:main',
+            'panda_sim_node = mujoco_learn.panda_sim_node:main',
         ],
     },
 )

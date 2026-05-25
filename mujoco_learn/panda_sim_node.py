@@ -70,7 +70,7 @@ class PandaSimNode(Node):
         # Resolve default local_models relative to share directory
         if not local_models:
             share_dir = os.environ.get(
-                'MUJOCO_PANDA_SHARE',
+                'MUJOCO_LEARN_SHARE',
                 str(Path(__file__).resolve().parents[2] / 'share' / 'mujoco_panda')
             )
             candidate = Path(share_dir) / 'models'

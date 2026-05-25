@@ -1,0 +1,43 @@
+﻿# ── MuJoCo Panda Simulation Configuration ──────────────────────────────────
+#
+# This file is loaded as ROS parameters by panda_sim_node.
+# Override on the command-line:
+#   ros2 launch mujoco_panda panda_sim.launch.py timestep:=0.001
+
+# Path to the Panda MJCF/XML scene file.
+# Leave empty to auto-detect from mujoco_menagerie or local models/.
+model_path: ""
+
+# Path to mujoco_menagerie root (if pip-installed, leave empty).
+menagerie_path: ""
+
+# Simulation physics timestep [s].
+# Lower values = more accurate but slower.
+timestep: 0.002
+
+# ROS control loop rate [Hz]. Should typically be >= 1/timestep steps/sec.
+# For real-time factor 1.0 with timestep 0.002, rate >= 500 is recommended.
+rate: 500
+
+# Run without any rendering (headless mode).
+# Set to true for servers or when only RViz/MoveIt visualization is needed.
+headless: false
+
+# Launch the MuJoCo passive viewer window.
+# Set to false if you only want RViz visualization.
+use_viewer: true
+
+# Publish TF frames for every body in the model.
+publish_tf: true
+
+# Joint names to include in /joint_states.
+joint_names:
+  - panda_joint1
+  - panda_joint2
+  - panda_joint3
+  - panda_joint4
+  - panda_joint5
+  - panda_joint6
+  - panda_joint7
+  - panda_finger_joint1
+  - panda_finger_joint2

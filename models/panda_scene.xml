@@ -1,0 +1,50 @@
+﻿<!-- ======================================================================
+     Local Panda scene (fallback when mujoco_menagerie is unavailable).
+
+     This file uses MuJoCo's <include> mechanism to reference the Panda
+     model from a pip-installed mujoco_menagerie.  If you have downloaded
+     the menagerie assets into this directory, adjust the file= path.
+
+     Usage in code:
+       env = MujocoPandaEnv(local_models="path/to/models")
+======================================================================= -->
+
+<mujoco model="panda_scene">
+  <compiler angle="radian" meshdir="franka_emika_panda/meshes"
+            texturedir="franka_emika_panda/textures" autolimits="true"/>
+
+  <option timestep="0.002" gravity="0 0 -9.81"/>
+
+  <!-- Lighting -->
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3"
+               specular="0 0 0"/>
+    <map stiffness="400" znear="0.001"/>
+  </visual>
+
+  <!-- Ground plane -->
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7"
+             rgb2="0 0 0" width="512" height="512"/>
+    <texture name="texplane" type="2d" builtin="checker" width="512"
+             height="512" rgb1=".2 .3 .4" rgb2=".1 .2 .3"/>
+    <material name="floor" texture="texplane" texrepeat="1 1"
+              texuniform="true" reflectance="0.2"/>
+  </asset>
+
+  <worldbody>
+    <light directional="true" diffuse="0.4 0.4 0.4" specular="0.1 0.1 0.1"
+           pos="0 0 5" dir="0 0 -1" castshadow="false"/>
+    <geom name="floor" size="0 0 0.05" type="plane" material="floor"
+          condim="3"/>
+
+    <!-- ============================================================
+         If mujoco_menagerie is pip-installed, this include should
+         resolve relative to its package directory (via meshdir).
+
+         If you have a local copy, adjust the path accordingly.
+         ============================================================ -->
+    <include file="franka_emika_panda/scene.xml"/>
+  </worldbody>
+
+</mujoco>

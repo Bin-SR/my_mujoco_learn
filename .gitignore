@@ -1,15 +1,31 @@
-﻿# MuJoCo learning project
-
-## Ignore patterns
+﻿# Python
 __pycache__/
 *.pyc
 *.pyo
-.env
-.venv/
-venv/
 *.egg-info/
 dist/
 build/
+*.egg
+
+# ROS2 build artifacts
+build/
+install/
+log/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
 .vscode/
+.idea/
 *.swp
 *.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# MuJoCo models (large binary files - download fresh)
+mujoco_panda/models/franka_emika_panda/

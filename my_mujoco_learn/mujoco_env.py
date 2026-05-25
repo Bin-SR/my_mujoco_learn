@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 MuJoCo environment wrapper for Franka Emika Panda robot.
 
@@ -34,12 +34,16 @@ def _find_menagerie_path() -> Optional[Path]:
             return p
 
     # 2. pip-installed mujoco-menagerie package
-    try:
-        import mujoco_menagerie
-        # site-packages/mujoco_menagerie/__init__.py -> package dir
-        return Path(mujoco_menagerie.__file__).parent
-    except ImportError:
-        pass
+    env_path = os.getenv("MUJOCO_MENAGERIE_PATH")
+    if env_path:
+        return Path(env_path)
+    return Path.home() / "mujoco_menagerie"
+    # try:
+    #     import mujoco_menagerie
+    #     # site-packages/mujoco_menagerie/__init__.py -> package dir
+    #     return Path(mujoco_menagerie.__file__).parent
+    # except ImportError:
+    #     pass
 
     # 3. Check typical mujoco_menagerie clone locations
     candidates = [
@@ -66,24 +70,29 @@ def _resolve_panda_xml(menagerie_path: Optional[Path] = None,
     """
     if menagerie_path is None:
         menagerie_path = _find_menagerie_path()
-
+    print("*******************************", menagerie_path)
     if menagerie_path is not None:
         scene_xml = menagerie_path / 'franka_emika_panda' / 'scene.xml'
+        print("scene_xml*******************************", scene_xml)
+        print("+++++++++++++++++++++++++++++++++++++++++++", scene_xml.exists())
         if scene_xml.exists():
             logger.info(f'Using menagerie scene: {scene_xml}')
             return str(scene_xml)
 
         panda_xml = menagerie_path / 'franka_emika_panda' / 'panda.xml'
+        print("panda_xml*******************************", panda_xml)
+        print("+++++++++++++++++++++++++++++++++++++++++++", panda_xml.exists())
         if panda_xml.exists():
             logger.info(f'Using menagerie panda: {panda_xml}')
             return str(panda_xml)
 
     if local_models is not None:
         local_scene = local_models / 'panda_scene.xml'
+        print("local_scene*******************************", local_scene)
+        print("+++++++++++++++++++++++++++++++++++++++++++", local_scene.exists())
         if local_scene.exists():
             logger.info(f'Using local scene: {local_scene}')
             return str(local_scene)
-
     raise FileNotFoundError(
         'Could not find Franka Emika Panda model.\n'
         'Install mujoco_menagerie:  pip install mujoco-menagerie\n'
@@ -164,8 +173,13 @@ class MujocoPandaEnv:
         else:
             mp = Path(menagerie_path) if menagerie_path else None
             lp = Path(local_models) if local_models else None
-            xml_path = _resolve_panda_xml(menagerie_path=mp, local_models=lp)
+            print("model_path =", model_path)
+            print("menagerie_path =", menagerie_path)
+            print("local_models =", local_models)
 
+            print("mp =", mp)
+            print("lp =", lp)
+            xml_path = _resolve_panda_xml(menagerie_path=mp, local_models=lp)
         logger.info(f'Loading MuJoCo model from: {xml_path}')
         self._model = mujoco.MjModel.from_xml_path(xml_path)
         self._data = mujoco.MjData(self._model)
@@ -174,6 +188,7 @@ class MujocoPandaEnv:
         self._model.opt.timestep = self._timestep
 
         # Build joint / actuator index maps
+        print("//////////////////////////////////", xml_path)
         self._build_index_maps()
 
         # Viewer (created lazily or on demand)
@@ -191,7 +206,7 @@ class MujocoPandaEnv:
         )
 
     # ---- index maps -------------------------------------------------------
-
+    # warning!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     def _build_index_maps(self):
         """Map joint/actuator names to MuJoCo IDs."""
         self.joint_name_to_id: Dict[str, int] = {}
@@ -348,6 +363,9 @@ class MujocoPandaEnv:
         return self._data.actuator_force.copy()
 
     # ---- rendering --------------------------------------------------------
+    # Wayland报错 找到了launch_passive
+    # [panda_sim_node-1] /home/ub22/.local/lib/python3.10/site-packages/glfw/__init__.py:917: GLFWError: (65548) b'Wayland: The platform does not provide the window position'
+    # [panda_sim_node-1]   warnings.warn(message, GLFWError)
 
     def launch_viewer(self) -> Optional[viewer.Handle]:
         """

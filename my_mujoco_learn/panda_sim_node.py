@@ -53,6 +53,9 @@ class PandaSimNode(Node):
         super().__init__(NODE_NAME)
 
         # ── parameters ────────────────────────────────────────────────
+        # 这个是ROS2的参数系统，即声明一个参数，(参数名， 默认值)
+        # 在launch文件里传参 即：Node(parameters=[{'model_path': LaunchConfiguration('model_path')}, 'xx': 'xxx'])
+        # 读取，如path = self.get_parameter('model_path').value
         self.declare_parameter('model_path', '')
         self.declare_parameter('menagerie_path', '')
         self.declare_parameter('local_models', '')
@@ -64,6 +67,7 @@ class PandaSimNode(Node):
         self.declare_parameter('joint_names', PANDA_ALL_JOINTS)
 
         model_path = self.get_parameter('model_path').value or None
+        self.get_logger().warn(f'12121212121: {model_path}')
         menagerie_path = self.get_parameter('menagerie_path').value or None
         local_models = self.get_parameter('local_models').value or None
 
@@ -71,7 +75,8 @@ class PandaSimNode(Node):
         if not local_models:
             share_dir = os.environ.get(
                 'MUJOCO_LEARN_SHARE',
-                str(Path(__file__).resolve().parents[2] / 'share' / 'mujoco_panda')
+                # !!!!
+                str(Path(__file__).resolve().parents[2] / 'share' / 'my_mujoco_learn')
             )
             candidate = Path(share_dir) / 'models'
             if candidate.exists():

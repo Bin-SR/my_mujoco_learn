@@ -39,7 +39,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     # ── package paths ──────────────────────────────────────────────────
-    pkg_share = get_package_share_directory('mujoco_learn')
+    pkg_share = get_package_share_directory('my_mujoco_learn')
 
     # ── launch arguments ───────────────────────────────────────────────
     model_path_arg = DeclareLaunchArgument(
@@ -76,7 +76,7 @@ def generate_launch_description():
 
     # ── simulation node ────────────────────────────────────────────────
     panda_sim_node = Node(
-        package='mujoco_learn',
+        package='my_mujoco_learn',
         executable='panda_sim_node',
         name='panda_sim_node',
         output='screen',

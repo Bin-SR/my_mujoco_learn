@@ -7,7 +7,7 @@ interface for simulation stepping, state reading, and rendering.
 """
 
 import os
-import sys
+import re
 import time
 import logging
 from pathlib import Path
@@ -58,47 +58,62 @@ def _find_menagerie_path() -> Optional[Path]:
     return None
 
 
-def _resolve_panda_xml(menagerie_path: Optional[Path] = None,
-                       local_models: Optional[Path] = None) -> str:
+def _resolve_include_paths(xml_string: str, menagerie_path: Path) -> str:
     """
-    Resolve the absolute path to the Panda scene XML.
+    Rewrite <include file="franka_emika_panda/..."/> so that the file
+    attribute becomes an absolute path rooted at menagerie_path.
 
-    Priority:
-      1. Explicit menagerie_path argument
-      2. Local models/ directory (bundled copy)
-      3. Auto-detected mujoco_menagerie install
+    We deliberately DO NOT touch <compiler>.  This way menagerie's own
+    panda.xml (which declares e.g. meshdir="assets") can resolve mesh
+    and texture files relative to its own directory — exactly as the
+    menagerie authors intended.
     """
-    if menagerie_path is None:
-        menagerie_path = _find_menagerie_path()
-    logger.warning(f'menagerie_path+++++++++++++++++++++++++++++++++++++++++++{menagerie_path}')
+    panda_dir = menagerie_path / 'franka_emika_panda'
+    if not panda_dir.exists():
+        logger.warning(f'franka_emika_panda not found under {menagerie_path}')
+        return xml_string
 
-    # if menagerie_path is not None:
-    #     scene_xml = menagerie_path / 'franka_emika_panda' / 'scene.xml'
-    #     logger.warning(f'scene_xml+++++++++++++++++++++++++++++++++++++++++++{scene_xml.exists()}')
-    #     logger.warning(f'scene_xml+++++++++++++++++++++++++++++++++++++++++++{scene_xml}')
-    #     if scene_xml.exists():
-    #         logger.warning(f'Using menagerie scene: {scene_xml}')
-    #         return str(scene_xml)
-
-    #     panda_xml = menagerie_path / 'franka_emika_panda' / 'panda.xml'
-    #     logger.warning(f'panda_xml+++++++++++++++++++++++++++++++++++++++++++{panda_xml.exists()}')
-    #     logger.warning(f'panda_xml+++++++++++++++++++++++++++++++++++++++++++{panda_xml}')
-    #     if panda_xml.exists():
-    #         logger.warning(f'Using menagerie panda: {panda_xml}')
-    #         return str(panda_xml)
-
-    if local_models is not None:
-        local_scene = local_models / 'panda_scene.xml'
-        logger.warning(f'local_scene+++++++++++++++++++++++++++++++++++++++++++{local_scene.exists()}')
-        logger.warning(f'local_scene+++++++++++++++++++++++++++++++++++++++++++{local_scene}')
-        if local_scene.exists():
-            logger.warning(f'Using local scene: {local_scene}')
-            return str(local_scene)
-    raise FileNotFoundError(
-        'Could not find Franka Emika Panda model.\n'
-        'Install mujoco_menagerie:  pip install mujoco-menagerie\n'
-        'Or set MMC_ASSETS env to the menagerie root directory.'
+    def _replace_include(match: re.Match) -> str:
+        file_val = match.group(1)
+        # Only rewrite relative paths pointing into franka_emika_panda/
+        if file_val.startswith('franka_emika_panda/') or file_val.startswith('franka_emika_panda\\'):
+            abs_path = str(menagerie_path / file_val)
+            logger.info(f'Resolved include: {file_val} -> {abs_path}')
+            return f'<include file="{abs_path}"/>'
+        return match.group(0)
+    
+    logger.warning(f'*********_replace_include={_replace_include}')
+    xml_string = re.sub(
+        r'<include\s+file="([^"]*franka_emika_panda[^"]*)"\s*/>',
+        _replace_include,
+        xml_string,
+        flags=re.IGNORECASE,
     )
+    return xml_string
+
+
+def _load_model_xml(xml_path: str,
+                    menagerie_path: Optional[Path] = None) -> mujoco.MjModel:
+    """
+    Load a MuJoCo model from an XML file.
+
+    If menagerie_path is available, <include> paths pointing into
+    franka_emika_panda/ are rewritten to absolute paths so that
+    menagerie's internal meshdir/texturedir declarations work correctly.
+    """
+    xml_string = Path(xml_path).read_text(encoding='utf-8')
+    logger.warning(f'*********xml_string={xml_string}')
+    logger.warning(f'*********xml_path={xml_path}')
+    logger.warning(f'*********menagerie_path={menagerie_path}')
+    mp = menagerie_path or _find_menagerie_path()
+    logger.warning(f'*********menagerie_path22222={menagerie_path}')
+    if mp is not None:
+        xml_string = _resolve_include_paths(xml_string, mp)
+        test = xml_string
+    if test == xml_string:
+        logger.warning(f'compare same**+-+-+-+-+-+++++++++++////////')
+    logger.warning(f'*********xml_string22222={xml_string}')
+    return mujoco.MjModel.from_xml_string(xml_string)
 
 
 # ---------------------------------------------------------------------------
@@ -131,14 +146,6 @@ PANDA_ALL_JOINTS = PANDA_ARM_JOINTS + PANDA_GRIPPER_JOINTS
 class MujocoPandaEnv:
     """
     A self-contained MuJoCo simulation environment for the Franka Emika Panda.
-
-    Usage::
-
-        env = MujocoPandaEnv()
-        env.reset()
-        for _ in range(1000):
-            env.step()
-            joints = env.get_joint_positions()
     """
 
     def __init__(self,
@@ -148,38 +155,32 @@ class MujocoPandaEnv:
                  render_mode: str = 'window',
                  timestep: float = 0.002,
                  headless: bool = False):
-        """
-        Parameters
-        ----------
-        model_path : str, optional
-            Direct path to an MJCF / XML file. Overrides auto-detection.
-        menagerie_path : str, optional
-            Path to mujoco_menagerie root.
-        local_models : str, optional
-            Path to local models/ directory with bundled XML files.
-        render_mode : str
-            One of `'window'`, `'offscreen'`.
-        timestep : float
-            Simulation timestep in seconds.
-        headless : bool
-            If True, skip all rendering (useful for headless servers).
-        """
         self._timestep = timestep
         self._render_mode = render_mode
         self._headless = headless
-        logger.warning(f'实例化类时: model_Path= {model_path} local_models={local_models}')
-        # Resolve model XML
-        if model_path:
-            xml_path = model_path
-        else:
-            mp = Path(menagerie_path) if menagerie_path else None
-            lp = Path(local_models) if local_models else None
-            xml_path = _resolve_panda_xml(menagerie_path=mp, local_models=lp)
-        logger.warning(f'Loading MuJoCo model from: {xml_path}')
 
-        xml_string = Path(xml_path).read_text(encoding='utf-8')
-        self._model = mujoco.MjModel.from_xml_string(xml_string)
-        # self._model = mujoco.MjModel.from_xml_path(xml_path)
+        mp = Path(menagerie_path) if menagerie_path else _find_menagerie_path()
+
+        if model_path is not None:
+            xml_path = model_path
+        elif local_models is not None:
+            xml_path = str(Path(local_models) / 'panda_scene.xml')
+        elif mp is not None:
+            xml_path = str(mp / 'franka_emika_panda' / 'scene.xml')
+        else:
+            local = Path(__file__).resolve().parents[1] / 'models' / 'panda_scene.xml'
+            if local.exists():
+                xml_path = str(local)
+            else:
+                raise FileNotFoundError(
+                    'Could not find Franka Emika Panda model.\n'
+                    '  Install:  pip install mujoco-menagerie\n'
+                    '  Or clone: git clone https://github.com/google-deepmind/mujoco_menagerie ~/mujoco_menagerie\n'
+                    '  Or set:   export MUJOCO_MENAGERIE_PATH=/path/to/mujoco_menagerie'
+                )
+
+        logger.info(f'Loading MuJoCo model from: {xml_path}')
+        self._model = _load_model_xml(xml_path, menagerie_path=mp)
         self._data = mujoco.MjData(self._model)
 
         # Apply timestep override
@@ -218,16 +219,9 @@ class MujocoPandaEnv:
             if name:
                 self.actuator_name_to_id[name] = i
 
-        # Verify known joints are present
         found = [j for j in PANDA_ALL_JOINTS if j in self.joint_name_to_id]
         if found:
             logger.info(f'Found {len(found)}/{len(PANDA_ALL_JOINTS)} expected Panda joints')
-        else:
-            logger.warning(
-                'No standard Panda joint names detected. '
-            )
-
-    # ---- properties -------------------------------------------------------
 
     @property
     def model(self) -> mujoco.MjModel:
@@ -253,56 +247,30 @@ class MujocoPandaEnv:
     def sim_time(self) -> float:
         return self._data.time
 
-    # ---- simulation loop -------------------------------------------------
-
     def step(self, ctrl: Optional[np.ndarray] = None) -> None:
-        """
-        Advance the simulation by one timestep.
-
-        Parameters
-        ----------
-        ctrl : np.ndarray, optional
-            Actuator control signals. Shape `(nu,)`.
-            If None, zero-control is applied (robot holds position).
-        """
         if ctrl is not None:
             self._data.ctrl[:] = ctrl
         else:
             self._data.ctrl[:] = 0.0
-
         mujoco.mj_step(self._model, self._data)
         self._step_count += 1
 
     def step_n(self, n: int, ctrl: Optional[np.ndarray] = None) -> None:
-        """Step `n` times with the same control."""
         for _ in range(n):
             self.step(ctrl)
 
     def reset(self) -> None:
-        """Reset the simulation to initial state."""
         mujoco.mj_resetData(self._model, self._data)
         self._step_count = 0
         self._start_time = time.time()
 
-    # ---- state access -----------------------------------------------------
-
     def get_qpos(self) -> np.ndarray:
-        """Return joint positions (qpos)."""
         return self._data.qpos.copy()
 
     def get_qvel(self) -> np.ndarray:
-        """Return joint velocities (qvel)."""
         return self._data.qvel.copy()
 
     def get_joint_positions(self, joint_names: Optional[list] = None) -> Dict[str, float]:
-        """
-        Return a dict mapping joint name -> position (radians).
-
-        Parameters
-        ----------
-        joint_names : list, optional
-            Specific joint names. Defaults to all joints.
-        """
         names = joint_names or list(self.joint_name_to_id.keys())
         result = {}
         for name in names:
@@ -313,7 +281,6 @@ class MujocoPandaEnv:
         return result
 
     def get_joint_velocities(self, joint_names: Optional[list] = None) -> Dict[str, float]:
-        """Return a dict mapping joint name -> velocity (rad/s)."""
         names = joint_names or list(self.joint_name_to_id.keys())
         result = {}
         for name in names:
@@ -324,51 +291,26 @@ class MujocoPandaEnv:
         return result
 
     def get_body_pose(self, body_name: str) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Return (position, quaternion) of a body in world frame.
-
-        position : np.ndarray (3,)  – x, y, z
-        quaternion : np.ndarray (4,) – w, x, y, z
-        """
         bid = mujoco.mj_name2id(self._model, mujoco.mjtObj.mjOBJ_BODY, body_name)
         if bid < 0:
-            raise ValueError(f'Body ""{body_name}"" not found in model.')
-        pos = self._data.xpos[bid].copy()
-        quat = self._data.xquat[bid].copy()  # w, x, y, z
-        return pos, quat
+            raise ValueError(f'Body "{body_name}" not found in model.')
+        return self._data.xpos[bid].copy(), self._data.xquat[bid].copy()
 
     def get_site_pose(self, site_name: str) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Return (position, rotation_matrix) of a site in world frame.
-        """
         sid = mujoco.mj_name2id(self._model, mujoco.mjtObj.mjOBJ_SITE, site_name)
         if sid < 0:
-            raise ValueError(f'Site ""{site_name}"" not found in model.')
+            raise ValueError(f'Site "{site_name}" not found in model.')
         pos = self._data.site_xpos[sid].copy()
         rot = self._data.site_xmat[sid].copy().reshape(3, 3)
         return pos, rot
 
-    # ---- control ----------------------------------------------------------
-
     def set_control(self, ctrl: np.ndarray) -> None:
-        """Write control signals to the data buffer (applied on next step)."""
         self._data.ctrl[:] = ctrl
 
     def get_actuator_force(self) -> np.ndarray:
-        """Return actuator forces."""
         return self._data.actuator_force.copy()
 
-    # ---- rendering --------------------------------------------------------
-    # Wayland报错 找到了launch_passive
-    # [panda_sim_node-1] /home/ub22/.local/lib/python3.10/site-packages/glfw/__init__.py:917: GLFWError: (65548) b'Wayland: The platform does not provide the window position'
-    # [panda_sim_node-1]   warnings.warn(message, GLFWError)
-
     def launch_viewer(self) -> Optional[viewer.Handle]:
-        """
-        Launch the interactive MuJoCo passive viewer.
-
-        Returns the viewer handle, or None if headless / already open.
-        """
         if self._headless:
             return None
         if self._viewer is not None:
@@ -386,11 +328,6 @@ class MujocoPandaEnv:
             return None
 
     def sync_viewer(self) -> bool:
-        """
-        Sync the viewer with current simulation state.
-
-        Returns True if the viewer is still open.
-        """
         if self._viewer is None:
             return True
         if not self._viewer.is_running():
@@ -399,7 +336,6 @@ class MujocoPandaEnv:
         return True
 
     def close_viewer(self) -> None:
-        """Close the viewer."""
         if self._viewer is not None:
             self._viewer.close()
             self._viewer = None
@@ -407,29 +343,18 @@ class MujocoPandaEnv:
 
     def render_offscreen(self, width: int = 640, height: int = 480,
                          camera: int = -1) -> np.ndarray:
-        """
-        Render a single frame offscreen (useful for headless / logging).
-
-        Returns an RGB numpy array of shape `(height, width, 3)`.
-        """
         if self._renderer is None:
             self._renderer = mujoco.Renderer(self._model, width, height)
-
         self._renderer.update_scene(self._data, camera=camera)
         return self._renderer.render()
 
-    # ---- convenience ------------------------------------------------------
-
     def close(self) -> None:
-        """Clean up all resources."""
         self.close_viewer()
         if self._renderer is not None:
             self._renderer.close()
             self._renderer = None
 
     def is_viewer_running(self) -> bool:
-        """Check whether the interactive viewer is still open."""
         if self._viewer is None:
             return False
         return self._viewer.is_running()
-

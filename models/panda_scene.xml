@@ -14,7 +14,14 @@
             texturedir="franka_emika_panda/textures" autolimits="true"/>
 
   <option timestep="0.002" gravity="0 0 -9.81"/>
+  <!-- ============================================================
+         If mujoco_menagerie is pip-installed, this include should
+         resolve relative to its package directory (via meshdir).
 
+         If you have a local copy, adjust the path accordingly.
+  ============================================================ -->
+  <include file="/home/ub22/mujoco_menagerie/franka_emika_panda/scene.xml"/>
+  
   <!-- Lighting -->
   <visual>
     <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3"
@@ -37,14 +44,6 @@
            pos="0 0 5" dir="0 0 -1" castshadow="false"/>
     <geom name="floor" size="0 0 0.05" type="plane" material="floor"
           condim="3"/>
-
-    <!-- ============================================================
-         If mujoco_menagerie is pip-installed, this include should
-         resolve relative to its package directory (via meshdir).
-
-         If you have a local copy, adjust the path accordingly.
-         ============================================================ -->
-    <include file="/home/ub22/mujoco_menagerie/franka_emika_panda/scene.xml"/>
   </worldbody>
 
 </mujoco>

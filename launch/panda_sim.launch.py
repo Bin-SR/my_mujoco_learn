@@ -40,8 +40,11 @@ from launch_ros.actions import Node
 def generate_launch_description():
     # ── package paths ──────────────────────────────────────────────────
     pkg_share = get_package_share_directory('my_mujoco_learn')
+    # /home/ub22/ros2_ws/install/my_mujoco_learn/share/my_mujoco_learn
+    print(pkg_share)
 
     # ── launch arguments ───────────────────────────────────────────────
+    # 这里的model_path和menagerie_path_arg, 默认值为''，即空字符串，为none
     model_path_arg = DeclareLaunchArgument(
         'model_path', default_value='',
         description='Direct path to Panda XML/MJCF file (overrides auto-detect).',

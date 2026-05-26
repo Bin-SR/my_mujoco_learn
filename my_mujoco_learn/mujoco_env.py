@@ -70,28 +70,29 @@ def _resolve_panda_xml(menagerie_path: Optional[Path] = None,
     """
     if menagerie_path is None:
         menagerie_path = _find_menagerie_path()
-    print("*******************************", menagerie_path)
-    if menagerie_path is not None:
-        scene_xml = menagerie_path / 'franka_emika_panda' / 'scene.xml'
-        print("scene_xml*******************************", scene_xml)
-        print("+++++++++++++++++++++++++++++++++++++++++++", scene_xml.exists())
-        if scene_xml.exists():
-            logger.info(f'Using menagerie scene: {scene_xml}')
-            return str(scene_xml)
+    logger.warning(f'menagerie_path+++++++++++++++++++++++++++++++++++++++++++{menagerie_path}')
 
-        panda_xml = menagerie_path / 'franka_emika_panda' / 'panda.xml'
-        print("panda_xml*******************************", panda_xml)
-        print("+++++++++++++++++++++++++++++++++++++++++++", panda_xml.exists())
-        if panda_xml.exists():
-            logger.info(f'Using menagerie panda: {panda_xml}')
-            return str(panda_xml)
+    # if menagerie_path is not None:
+    #     scene_xml = menagerie_path / 'franka_emika_panda' / 'scene.xml'
+    #     logger.warning(f'scene_xml+++++++++++++++++++++++++++++++++++++++++++{scene_xml.exists()}')
+    #     logger.warning(f'scene_xml+++++++++++++++++++++++++++++++++++++++++++{scene_xml}')
+    #     if scene_xml.exists():
+    #         logger.warning(f'Using menagerie scene: {scene_xml}')
+    #         return str(scene_xml)
+
+    #     panda_xml = menagerie_path / 'franka_emika_panda' / 'panda.xml'
+    #     logger.warning(f'panda_xml+++++++++++++++++++++++++++++++++++++++++++{panda_xml.exists()}')
+    #     logger.warning(f'panda_xml+++++++++++++++++++++++++++++++++++++++++++{panda_xml}')
+    #     if panda_xml.exists():
+    #         logger.warning(f'Using menagerie panda: {panda_xml}')
+    #         return str(panda_xml)
 
     if local_models is not None:
         local_scene = local_models / 'panda_scene.xml'
-        print("local_scene*******************************", local_scene)
-        print("+++++++++++++++++++++++++++++++++++++++++++", local_scene.exists())
+        logger.warning(f'local_scene+++++++++++++++++++++++++++++++++++++++++++{local_scene.exists()}')
+        logger.warning(f'local_scene+++++++++++++++++++++++++++++++++++++++++++{local_scene}')
         if local_scene.exists():
-            logger.info(f'Using local scene: {local_scene}')
+            logger.warning(f'Using local scene: {local_scene}')
             return str(local_scene)
     raise FileNotFoundError(
         'Could not find Franka Emika Panda model.\n'
@@ -166,21 +167,15 @@ class MujocoPandaEnv:
         self._timestep = timestep
         self._render_mode = render_mode
         self._headless = headless
-
+        logger.warning(f'实例化类时: model_Path= {model_path} local_models={local_models}')
         # Resolve model XML
-        if model_path is not None:
+        if model_path:
             xml_path = model_path
         else:
             mp = Path(menagerie_path) if menagerie_path else None
             lp = Path(local_models) if local_models else None
-            print("model_path =", model_path)
-            print("menagerie_path =", menagerie_path)
-            print("local_models =", local_models)
-
-            print("mp =", mp)
-            print("lp =", lp)
             xml_path = _resolve_panda_xml(menagerie_path=mp, local_models=lp)
-        logger.info(f'Loading MuJoCo model from: {xml_path}')
+        logger.warning(f'Loading MuJoCo model from: {xml_path}')
         self._model = mujoco.MjModel.from_xml_path(xml_path)
         self._data = mujoco.MjData(self._model)
 
@@ -188,7 +183,6 @@ class MujocoPandaEnv:
         self._model.opt.timestep = self._timestep
 
         # Build joint / actuator index maps
-        print("//////////////////////////////////", xml_path)
         self._build_index_maps()
 
         # Viewer (created lazily or on demand)
@@ -228,7 +222,6 @@ class MujocoPandaEnv:
         else:
             logger.warning(
                 'No standard Panda joint names detected. '
-                'Joint map built from model directly.'
             )
 
     # ---- properties -------------------------------------------------------

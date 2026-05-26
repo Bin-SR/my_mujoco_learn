@@ -12,6 +12,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', ['launch/panda_sim.launch.py']),
         ('share/' + package_name + '/config', ['config/panda_sim.yaml']),
+        ('share/' + package_name + '/models' , ['models/panda_scene.xml']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,

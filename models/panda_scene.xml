@@ -44,7 +44,7 @@
 
          If you have a local copy, adjust the path accordingly.
          ============================================================ -->
-    <include file="franka_emika_panda/scene.xml"/>
+    <include file="/home/ub22/mujoco_menagerie/franka_emika_panda/scene.xml"/>
   </worldbody>
 
 </mujoco>

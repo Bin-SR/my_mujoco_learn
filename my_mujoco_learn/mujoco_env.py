@@ -72,20 +72,20 @@ def _resolve_panda_xml(menagerie_path: Optional[Path] = None,
         menagerie_path = _find_menagerie_path()
     logger.warning(f'menagerie_path+++++++++++++++++++++++++++++++++++++++++++{menagerie_path}')
 
-    # if menagerie_path is not None:
-    #     scene_xml = menagerie_path / 'franka_emika_panda' / 'scene.xml'
-    #     logger.warning(f'scene_xml+++++++++++++++++++++++++++++++++++++++++++{scene_xml.exists()}')
-    #     logger.warning(f'scene_xml+++++++++++++++++++++++++++++++++++++++++++{scene_xml}')
-    #     if scene_xml.exists():
-    #         logger.warning(f'Using menagerie scene: {scene_xml}')
-    #         return str(scene_xml)
+    if menagerie_path is not None:
+        scene_xml = menagerie_path / 'franka_emika_panda' / 'scene.xml'
+        logger.warning(f'scene_xml+++++++++++++++++++++++++++++++++++++++++++{scene_xml.exists()}')
+        logger.warning(f'scene_xml+++++++++++++++++++++++++++++++++++++++++++{scene_xml}')
+        if scene_xml.exists():
+            logger.warning(f'Using menagerie scene: {scene_xml}')
+            return str(scene_xml)
 
-    #     panda_xml = menagerie_path / 'franka_emika_panda' / 'panda.xml'
-    #     logger.warning(f'panda_xml+++++++++++++++++++++++++++++++++++++++++++{panda_xml.exists()}')
-    #     logger.warning(f'panda_xml+++++++++++++++++++++++++++++++++++++++++++{panda_xml}')
-    #     if panda_xml.exists():
-    #         logger.warning(f'Using menagerie panda: {panda_xml}')
-    #         return str(panda_xml)
+        panda_xml = menagerie_path / 'franka_emika_panda' / 'panda.xml'
+        logger.warning(f'panda_xml+++++++++++++++++++++++++++++++++++++++++++{panda_xml.exists()}')
+        logger.warning(f'panda_xml+++++++++++++++++++++++++++++++++++++++++++{panda_xml}')
+        if panda_xml.exists():
+            logger.warning(f'Using menagerie panda: {panda_xml}')
+            return str(panda_xml)
 
     if local_models is not None:
         local_scene = local_models / 'panda_scene.xml'
@@ -178,8 +178,9 @@ class MujocoPandaEnv:
         logger.warning(f'Loading MuJoCo model from: {xml_path}')
 
         xml_string = Path(xml_path).read_text(encoding='utf-8')
-        self._model = mujoco.MjModel.from_xml_string(xml_string)
-        # self._model = mujoco.MjModel.from_xml_path(xml_path)
+        logger.warning(f'*********xml_string={xml_string}')
+        # self._model = mujoco.MjModel.from_xml_string(xml_string)
+        self._model = mujoco.MjModel.from_xml_path(xml_path)
         self._data = mujoco.MjData(self._model)
 
         # Apply timestep override
